@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>社會處方全健經理小扮演</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans HK', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: url('your_image_url_here') no-repeat center center fixed;
+      background-size: cover;
+    }
+    #start-button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 5px;
+      font-size: 24px;
+      cursor: pointer;
+      position: relative;
+      z-index: 1;
+    }
+    #start-button:hover {
+      background-color: #45a049;
+    }
+    h1 {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 48px;
+      text-align: center;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <h1>社會處方全健經理扮演小遊戲</h1>
+  <button id="start-button" onclick="startGame()">開始</button>
+
+  <script>
+    function startGame() {
+      // 導航到遊戲頁面或顯示遊戲內容
+      window.location.href = 'index.html'; // 假設遊戲內容在 game.html
+    }
+  </script>
+</body>
+</html>

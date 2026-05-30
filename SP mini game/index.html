@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>社會處方全健經理扮演小遊戲</title>
+  <style>
+    body {
+      font-family: 'Noto Sans HK', sans-serif;
+      text-align: center;
+      background-image: url('bg.jpg');
+      background-size: cover;
+      background-position: center;
+      margin: 0;
+      padding: 20px;
+    }
+    #game-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      font-size: 36px;
+    }
+    p {
+      font-size: 24px;
+    }
+    #client-info, #question, #feedback, #score {
+      margin: 15px 0;
+      font-size: 22px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #686360;
+    }
+    #options {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    canvas {
+      margin: 20px auto;
+      display: block;
+    }
+    .poster {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .poster img {
+      max-width: 100%;
+      height: auto;
+    }
+    #mute-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #c0c0c0;
+      border: none;
+      border-radius: 5px;
+      padding: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <audio id="background-music" loop>
+    <source src="music.mp3" type="audio/mpeg">
+    您的瀏覽器不支持音頻。
+  </audio>
+
+  <button id="mute-button">播放</button>
+
+  <div id="game-container">
+    <h1>社會處方全健經理扮演小遊戲</h1>
+    <p>扮演社會處方全健經理，處方合適社會處方！提升參加者的全人健康！</p>
+    <div id="score">健康指數：0</div>
+    <canvas id="scoreChart" width="400" height="200"></canvas>
+    <div id="client-info"></div>
+    <div id="question"></div>
+    <div id="options"></div>
+    <div id="feedback"></div>
+    <button id="next" style="display: none;">下一位參加者</button>
+    <div id="result" style="display: none;"></div>
+    <div id="posters" style="display: none;">
+      <div class="poster">
+        <img src="target.png" alt="社會處方目標海報">
+      </div>
+      <div class="poster">
+        <p>如果你有興趣透過個人化服務同連結社區資源，改善全人健康，歡迎透過下面QR Code報名參加我哋全健綜合大樓既社會處方健康管理計劃！📋</p>
+        <img src="Social prescription poster_public 1 (1).jpg" alt="社會處方健康管理計劃海報">
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+        try {
+          var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+          var firstSheetName = workbook.SheetNames[0];
+          var worksheet = workbook.Sheets[firstSheetName];
+          var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+          var filteredData = jsonData.filter(row => row.some(filledCell));
+          var headerRowIndex = filteredData.findIndex((row, index) =>
+            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+          );
+          if (headerRowIndex === -1 || headerRowIndex > 25) {
+            headerRowIndex = 0;
+          }
+          var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+          csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+          return csv;
+        } catch (e) {
+          console.error(e);
+          return "";
+        }
+      }
+      return gk_fileData[filename] || "";
+    }
+
+    // Background music control
+    const music = document.getElementById('background-music');
+    const muteButton = document.getElementById('mute-button');
+
+    muteButton.onclick = function() {
+      if (music.paused) {
+        music.play().catch(error => console.error('音樂播放失敗:', error));
+        muteButton.innerText = "靜音";
+      } else {
+        music.pause();
+        muteButton.innerText = "播放";
+      }
+    };
+
+    // Game logic
+    const clients = [
+      {
+        name: "Andy",
+        description: "10歲，覺得上學壓力大，鍾意畫畫同做手工。",
+        question: "點樣為Andy提供個人化服務？",
+        options: [
+          { text: "建議佢參加高強度運動班", score: 2, feedback: "唔太啱，高強度運動可能唔合適10歲嘅小朋友，而且同佢喜好不符。" },
+          { text: "介紹佢參加香港青年協會全健綜合大樓嘅『和諧粉彩工作坊』", score: 10, feedback: "好掂！和諧粉彩工作坊啱佢畫畫興趣，幫佢減壓。" },
+          { text: "馬上安排佢同臨床心理學家見面", score: 5, feedback: "可能有用，但建議先評估需要再安排專業服務。" }
+        ],
+        theme: "個人化服務"
+      },
+      {
+        name: "Mary",
+        description: "30歲，壓力大，鍾意靜下來嘅活動。",
+        question: "點樣為Mary運用地區資源？",
+        options: [
+          { text: "介紹佢參加遠程藝術工作坊", score: 3, feedback: "遠程活動唔方便，影響參與意欲。" },
+          { text: "安排佢參加香港青年協會全健綜合大樓嘅『全健師頌缽工作坊』", score: 10, feedback: "好成功！頌缽工作坊幫佢放鬆同符合喜好，增加參與意欲。" },
+          { text: "建議佢用線上冥想App", score: 6, feedback: "線上資源有幫助，但面對面互動更佳。" }
+        ],
+        theme: "運用地區資源"
+      },
+      {
+        name: "Joe",
+        description: "8歲，唔鍾意運動，但鍾意同朋友一齊玩。",
+        question: "點樣提高Joe嘅運動意欲？",
+        options: [
+          { text: "直接報名畀佢參加高強度健身班", score: 2, feedback: "唔太啱，8歲小朋友未必適合高強度健身訓練。" },
+          { text: "畀Youtube片佢自己睇", score: 4, feedback: "Youtube片可能有啲用，但無互動支持，效果有限。" },
+          { text: "推薦佢同朋友參加香港青年協會全健綜合大樓嘅『體適能小組』", score: 10, feedback: "成功！同朋友一齊參加體適能小組，畀佢覺得好玩，慢慢愛上運動。" }
+        ],
+        theme: "提升服務使用者動機"
+      },
+      {
+        name: "Kitty",
+        description: "25歲，啱啱搬來香港，無咩朋友，鍾意音樂。",
+        question: "點樣為Kitty提供個人化服務？",
+        options: [
+          { text: "建議佢參加煮飯班", score: 3, feedback: "煮飯班有啲趣，但同佢興趣唔太相關。" },
+          { text: "安排佢參加語言學習班", score: 5, feedback: "語言班幫到佢適應香港，但社交效果有限。" },
+          { text: "介紹佢參加本地合唱團", score: 10, feedback: "好成功！合唱團啱佢音樂興趣，幫佢融入社區。" }
+        ],
+        theme: "個人化服務"
+      },
+      {
+        name: "周伯伯",
+        description: "75歲，行動唔方便，覺得悶，鍾意聽音樂。",
+        question: "點樣提高周伯伯嘅生活意欲？",
+        options: [
+          { text: "建議佢參加高級手工藝班", score: 3, feedback: "手工藝班要求高，可能唔啱佢行動能力。" },
+          { text: "畀數獨遊戲書畀佢", score: 5, feedback: "數獨幫到消遣，但無社交互動，效果有限。" },
+          { text: "安排義工定期探訪，陪佢傾計同聽音樂", score: 10, feedback: "好成功！探訪同音樂畀佢覺得受關心，增加生活動力。" }
+        ],
+        theme: "提升服務使用者動機"
+      },
+      {
+        name: "吳婆婆",
+        description: "70歲，覺得生活空虛，鍾意同人傾計。",
+        question: "點樣為吳婆婆提供個人化服務？",
+        options: [
+          { text: "建議佢每日寫日記", score: 3, feedback: "寫日記可能對整理思緒有幫助，但少咗面對面互動。" },
+          { text: "鼓勵佢參加社區中心嘅義工計劃", score: 5, feedback: "義工工作畀佢覺得有價值，增強參與感，但可能要時間適應。" },
+          { text: "安排一對一面談服務(全健經理)", score: 10, feedback: "掂！一對一面談服務可能令佢感受到關懷，減少孤獨感，並增強生活滿足感。" }
+        ],
+        theme: "個人化服務"
+      },
+      {
+        name: "Jace",
+        description: "28歲，單親媽媽，經濟壓力大，鍾意煮食。",
+        question: "點樣為Jace運用地區資源？",
+        options: [
+          { text: "建議佢參加遠程健身訓練", score: 2, feedback: "健身訓練同佢興趣唔啱，時間可能安排唔到。" },
+          { text: "介紹佢參加香港青年協會全健綜合大樓嘅『Green Monday煮食班』", score: 10, feedback: "成功！Green Monday煮食班教健康食譜，啱佢興趣，又經濟實惠。" },
+          { text: "安排佢同財務顧問見面", score: 6, feedback: "財務建議幫到減壓，但未有直接解決佢社交需要。" }
+        ],
+        theme: "運用地區資源"
+      },
+      {
+        name: "Tom",
+        description: "15歲，中學生，唔自信，鍾意同人傾計。",
+        question: "點樣提高Tom嘅參與意欲？",
+        options: [
+          { text: "畀職業發展手冊畀佢自己睇", score: 5, feedback: "手冊有資訊，但無實際支持，效果有限。" },
+          { text: "建議佢參加線上遊戲比賽", score: 3, feedback: "線上遊戲可能有趣，但少咗面對面互動。" },
+          { text: "安排佢參加香港青年協會全健綜合大樓嘅『青年義工活動 - 星途 The Starlight Explorer』", score: 10, feedback: "好成功！星途增加佢同街坊傾計既機會同增強信心。" }
+        ],
+        theme: "提升服務使用者動機"
+      },
+      {
+        name: "Cathy",
+        description: "32歲，有慢性病，情緒低落，飲食習慣不好，但有意改善。",
+        question: "點樣為Cathy提供個人化服務？",
+        options: [
+          { text: "建議佢參加跑步團", score: 2, feedback: "跑步團唔啱佢健康狀況，可能增加壓力。" },
+          { text: "介紹佢參加本地藝術治療工作坊", score: 5, feedback: "藝術治療幫到佢情緒，但未有直接解決飲食問題。" },
+          { text: "安排佢同營養師見面", score: 10, feedback: "好成功！營養師幫佢改善飲食習慣，符合佢嘅意願同需要。" }
+        ],
+        theme: "個人化服務"
+      },
+      {
+        name: "Sam",
+        description: "60歲，退休，覺得孤單，鍾意戶外活動。",
+        question: "點樣為Sam運用地區資源？",
+        options: [
+          { text: "介紹佢參加室內棋藝班", score: 3, feedback: "室內活動唔啱佢興趣，參與度可能低。" },
+          { text: "建議佢用線上社交平台", score: 6, feedback: "線上平台有啲用，但面對面互動更有效。" },
+          { text: "連繫佢去社區中心嘅園藝班", score: 10, feedback: "好成功！園藝班啱佢戶外興趣，幫佢建立社交聯繫。" }
+        ],
+        theme: "運用地區資源"
+      }
+    ];
+
+    let currentClientIndex = 0;
+    let totalScore = 0;
+    let scores = [];
+
+    // Load game state from localStorage
+    function loadGameState() {
+      const savedState = localStorage.getItem('gameState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          currentClientIndex = state.currentClientIndex || 0;
+          totalScore = state.totalScore || 0;
+          scores = state.scores || Array(clients.length).fill(0);
+        } catch (e) {
+          console.error('載入遊戲狀態失敗:', e);
+          scores = Array(clients.length).fill(0);
+        }
+      } else {
+        scores = Array(clients.length).fill(0);
+      }
+    }
+
+    // Save game state to localStorage
+    function saveGameState() {
+      const state = {
+        currentClientIndex: currentClientIndex,
+        totalScore: totalScore,
+        scores: scores
+      };
+      try {
+        localStorage.setItem('gameState', JSON.stringify(state));
+      } catch (e) {
+        console.error('儲存遊戲狀態失敗:', e);
+      }
+    }
+
+    // Reset game state
+    function resetGame() {
+      try {
+        localStorage.removeItem('gameState');
+      } catch (e) {
+        console.error('清除遊戲狀態失敗:', e);
+      }
+      currentClientIndex = 0;
+      totalScore = 0;
+      scores = Array(clients.length).fill(0);
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('posters').style.display = 'none';
+      document.getElementById('client-info').innerText = '';
+      document.getElementById('question').innerText = '';
+      document.getElementById('feedback').innerText = '';
+      document.getElementById('next').style.display = 'none';
+      displayClient();
+    }
+
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    let chart;
+
+    function updateChart() {
+      if (chart) chart.destroy();
+
+      // 創建人形公仔圖標作為標記（使用表情符號作為佔位符）
+      const personImage = new Image();
+      personImage.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><text x="0" y="15" font-size="15">👤</text></svg>';
+      // 可選：使用自訂圖片，例如 personImage.src = 'person-icon.png';
+
+      // 創建 pointStyle 和 pointRadius 數組，僅最新數據點顯示人形標記
+      const pointStyles = scores.map((_, i) => i === currentClientIndex ? personImage : 'circle');
+      const pointRadii = scores.map((_, i) => i === currentClientIndex ? 10 : 0);
+      const pointHoverRadii = scores.map((_, i) => i === currentClientIndex ? 12 : 0);
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: scores.map((_, i) => `參加者 ${i + 1}`),
+          datasets: [{
+            label: '健康指數',
+            data: scores,
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+            pointStyle: pointStyles, // 僅最新數據點使用人形圖標
+            pointRadius: pointRadii, // 僅最新數據點顯示標記
+            pointHoverRadius: pointHoverRadii // 僅最新數據點在懸停時放大
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: '健康指數'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: '參加者'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
+        }
+      });
+    }
+
+    function displayClient() {
+      if (currentClientIndex >= clients.length) {
+        showResult();
+        return;
+      }
+      const client = clients[currentClientIndex];
+      document.getElementById('client-info').innerText = `參加者：${client.name} - ${client.description}`;
+      document.getElementById('question').innerText = client.question;
+      document.getElementById('feedback').innerText = '';
+      document.getElementById('next').style.display = 'none';
+      document.getElementById('score').innerText = `健康指數：${totalScore}`;
+
+      const optionsDiv = document.getElementById('options');
+      optionsDiv.innerHTML = '';
+      client.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.innerText = option.text;
+        button.onclick = () => selectOption(option, client.theme);
+        optionsDiv.appendChild(button);
+      });
+
+      updateChart();
+      saveGameState();
+    }
+
+    function selectOption(option, theme) {
+      totalScore += option.score;
+      scores[currentClientIndex] = totalScore;
+      document.getElementById('score').innerText = `健康指數：${totalScore}`;
+      document.getElementById('feedback').innerText = `${theme}：${option.feedback}`;
+      document.getElementById('options').innerHTML = '';
+      document.getElementById('next').style.display = 'block';
+      updateChart();
+      saveGameState();
+    }
+
+    function showResult() {
+      const resultDiv = document.getElementById('result');
+      let message;
+      if (totalScore <= 40) {
+        message = '你對社會處方嘅了解仲處於初步階段，可能是因為接觸唔多或者未有深入了解。唔使擔心！建議多啲睇相關資料或者參加社區活動，慢慢加深認識，繼續努力啦！💪🏻';
+      } else if (totalScore <= 70) {
+        message = '你對社會處方已經有一定了解，掌握咗基本概念，表現唔錯！繼續保持好奇心，透過學習同實踐去再深入了解，加油！👀';
+      } else {
+        message = '太好喇！你對社會處方有好好嘅認識，掌握到佢嘅理念！試吓將呢啲知識用喺生活中，例如參加社區互助或者推廣相關觀念，令生活更加充實！👏🏻';
+      }
+      resultDiv.innerHTML = `
+        <h2>遊戲結束！</h2>
+        <p>🏆最終健康指數🏆：${totalScore}</p>
+        <p>${message}</p>
+        <p>多謝你體驗社會處方全健經理嘅工作！唔係每一樣處方都適合所有人，所以個人化服務係好緊要架❤️！</p>
+        <button onclick="resetGame()">重新開始</button>
+      `;
+      resultDiv.style.display = 'block';
+      document.getElementById('posters').style.display = 'block';
+      saveGameState();
+    }
+
+    document.getElementById('next').onclick = () => {
+      currentClientIndex++;
+      if (currentClientIndex < clients.length) {
+        displayClient();
+      } else {
+        document.getElementById('client-info').innerText = '';
+        document.getElementById('question').innerText = '';
+        document.getElementById('feedback').innerText = '';
+        document.getElementById('next').style.display = 'none';
+        showResult();
+      }
+    };
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = () => {
+      loadGameState();
+      document.getElementById('score').innerText = `健康指數：${totalScore}`;
+      displayClient();
+    };
+    document.head.appendChild(script);
+  </script>
+</body>
+</html>
