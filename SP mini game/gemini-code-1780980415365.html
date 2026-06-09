@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>社會處方全健經理：像素戰鬥冒險 HD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+HK:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pixel-bg: linear-gradient(to bottom, #87CEEB, #E0F6FF), url('https://img.itch.zone/aW1nLzU3MTY0MDAucG5n/original/x21p04.png');
+    }
+
+    body {
+      margin: 0;
+      padding: 10px;
+      background-color: #1a1a1a;
+      font-family: 'Noto Sans HK', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #game-container {
+      width: 100%;
+      max-width: 800px;
+      background: #000;
+      border: 4px solid #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      position: relative;
+    }
+
+    /* 戰鬥舞台 */
+    #battle-stage {
+      height: 350px;
+      background: var(--pixel-bg);
+      background-size: cover;
+      background-position: center bottom;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.5s ease;
+    }
+
+    /* 精緻復古狀態欄 */
+    .status-box {
+      position: absolute;
+      background: rgba(250, 250, 250, 0.96);
+      border: 3px solid #333;
+      border-radius: 4px;
+      padding: 10px 14px;
+      width: 240px;
+      box-shadow: 3px 3px 0 #000;
+      z-index: 5;
+    }
+    
+    #enemy-status { top: 20px; left: 20px; }
+    #player-status { bottom: 25px; right: 20px; }
+
+    .status-name {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+      color: #111;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .status-meta { font-size: 11px; color: #555; margin-bottom: 6px; font-weight: bold; }
+
+    /* 寶可夢風格經典血條 */
+    .hp-container {
+      background: #444;
+      border: 2px solid #000;
+      height: 14px;
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .hp-tag {
+      background: #ffcb05;
+      color: #1d2c5e;
+      font-family: 'Press Start 2P', sans-serif;
+      font-size: 8px;
+      padding: 0 4px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+      border-right: 2px solid #000;
+    }
+
+    .hp-bar-wrapper { flex-grow: 1; height: 100%; background: #222; }
+
+    .hp-bar {
+      width: 0%; 
+      height: 100%;
+      transition: width 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), background-color 0.4s;
+    }
+
+    .hp-red { background-color: #ff3c3c; }
+    .hp-yellow { background-color: #ffcc00; }
+    .hp-green { background-color: #51da46; }
+
+    .hp-label {
+      font-size: 10px;
+      text-align: right;
+      margin-top: 4px;
+      font-family: 'Press Start 2P', sans-serif;
+      color: #222;
+    }
+
+    /* 角色精靈圖容器 */
+    .sprite-container {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* 上方：參加者位置 */
+    #enemy-position {
+      right: 70px;
+      top: 45px;
+      animation: sprite-float 2.8s ease-in-out infinite;
+    }
+
+    /* 下方：全健經理位置 */
+    #player-position {
+      left: 70px;
+      bottom: 25px;
+      animation: sprite-float 3.2s ease-in-out infinite alternate;
+    }
+
+    .pixel-avatar-hd {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.15));
+    }
+
+    /* 動態回饋動畫特效 */
+    @keyframes jump-joy {
+      0%, 100% { transform: translateY(0) scale(1); }
+      30% { transform: translateY(-25px) scaleY(1.15) scaleX(0.9); }
+      50% { transform: translateY(0) scaleY(0.85) scaleX(1.1); }
+      70% { transform: translateY(-10px) scaleY(1.05); }
+    }
+    .animate-jump { animation: jump-joy 0.6s ease-out 2; }
+
+    @keyframes shake-hurt {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-12px, 2px); }
+      40% { transform: translate(10px, -4px); }
+      60% { transform: translate(-6px, 4px); }
+      80% { transform: translate(6px, -2px); }
+    }
+    .animate-shake { animation: shake-hurt 0.4s ease-in-out; }
+
+    @keyframes sprite-float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+      100% { transform: translateY(0px); }
+    }
+
+    /* 粒子特效 */
+    #particle-container {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 10;
+    }
+    .particle {
+      position: absolute; width: 10px; height: 10px; border-radius: 2px;
+      animation: particle-fly 0.7s forwards cubic-bezier(0.1, 0.8, 0.3, 1);
+    }
+    @keyframes particle-fly {
+      0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+      100% { transform: translate(var(--mx), var(--my)) scale(0) rotate(270deg); opacity: 0; }
+    }
+
+    /* 對話框與 2x2 選單控制區 */
+    #control-section {
+      background: #f4f4f4;
+      border-top: 4px solid #333;
+      padding: 14px;
+      min-height: 150px;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: 55% 45%;
+    }
+
+    #dialogue-box {
+      border: 3px solid #444;
+      background: #fff;
+      border-radius: 5px;
+      padding: 12px;
+      font-size: 16px;
+      line-height: 1.6;
+      color: #111;
+      position: relative;
+      box-shadow: inset 2px 2px 0 rgba(0,0,0,0.05);
+    }
+
+    #quest-progress {
+      position: absolute;
+      top: 6px; right: 10px;
+      font-size: 11px;
+      color: #888;
+      font-family: 'Press Start 2P', sans-serif;
+    }
+
+    #options-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 8px;
+      padding-left: 12px;
+    }
+
+    .action-btn {
+      background: #fff;
+      border: 3px solid #444;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      font-family: 'Noto Sans HK', sans-serif;
+      padding: 8px;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      transition: all 0.1s;
+      box-shadow: inset -3px -3px 0 #ddd, 2px 2px 0 rgba(0,0,0,0.1);
+    }
+
+    .action-btn::before {
+      content: '▶'; margin-right: 6px; color: transparent; font-size: 11px;
+    }
+    .action-btn:hover::before { color: #ff3c3c; }
+    .action-btn:active { transform: translate(1px, 1px); box-shadow: inset -1px -1px 0 #ddd; }
+
+    .full-width-next {
+      grid-column: span 2; grid-row: span 2;
+      text-align: center !important; justify-content: center;
+      background-color: #2e7d32 !important; color: white !important;
+      box-shadow: inset -3px -3px 0 #1b5e20 !important; font-size: 16px;
+    }
+
+    #system-controls {
+      display: flex; justify-content: space-between; max-width: 800px; width: 100%; margin-top: 10px;
+    }
+    .sys-btn {
+      background: #333; color: #fff; border: none; padding: 10px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold;
+    }
+
+    #summary-screen {
+      display: none; padding: 30px 20px; text-align: center; background: white; color: #333;
+    }
+
+    @media(max-width: 650px) {
+      #control-section { grid-template-columns: 1fr; gap: 12px; }
+      #options-box { padding-left: 0; min-height: 130px; }
+      #battle-stage { height: 290px; }
+      #enemy-position { right: 15px; top: 15px; }
+      #player-position { left: 15px; bottom: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div>
+    <div id="game-container">
+      <div id="battle-stage">
+        <div id="particle-container"></div>
+
+        <div id="enemy-status" class="status-box">
+          <div class="status-name"><span id="lbl-enemy-name">---</span> <span id="lbl-enemy-age" style="font-size:12px;">Lv.10</span></div>
+          <div id="lbl-enemy-desc" class="status-meta">健康指數</div>
+          <div class="hp-container">
+            <div class="hp-tag">HP</div>
+            <div class="hp-bar-wrapper">
+              <div id="enemy-hp" class="hp-bar hp-red"></div>
+            </div>
+          </div>
+          <div class="hp-label" id="lbl-enemy-hp-text">0 / 10</div>
+        </div>
+
+        <div id="enemy-position" class="sprite-container"></div>
+
+        <div id="player-status" class="status-box">
+          <div class="status-name"><span>全健經理</span> <span id="lbl-player-sex" style="font-size:13px;">♂</span></div>
+          <div class="status-meta">累積全健分數 (10題暫時累積)</div>
+          <div class="hp-container">
+            <div class="hp-tag">HP</div>
+            <div class="hp-bar-wrapper">
+              <div id="player-hp" class="hp-bar hp-red"></div>
+            </div>
+          </div>
+          <div class="hp-label" id="lbl-player-hp-text">0 / 100</div>
+        </div>
+
+        <div id="player-position" class="sprite-container"></div>
+      </div>
+
+      <div id="control-section">
+        <div id="dialogue-box">
+          <span id="quest-progress">0/10</span>
+          <div id="dialogue-text">載入中...</div>
+        </div>
+        <div id="options-box"></div>
+      </div>
+
+      <div id="summary-screen">
+        <h2 style="font-size: 26px; margin-top:0;">📋 最終全健經營成果報告</h2>
+        <p id="summary-text" style="font-size: 18px; line-height: 1.6; color:#444;"></p>
+        <button class="action-btn full-width-next" onclick="resetGame()" style="width:220px; margin:20px auto 0;">重新掌舵大樓</button>
+      </div>
+    </div>
+
+    <div id="system-controls">
+      <button class="sys-btn" onclick="toggleEnvironment()">🌲 切換自然/室內場景</button>
+      <button class="sys-btn" id="btn-audio" onclick="toggleAudio()">🎵 背景音樂: 關閉</button>
+    </div>
+  </div>
+
+  <audio id="bgm" loop><source src="music.mp3" type="audio/mpeg"></audio>
+
+  <script>
+    const clients = [
+      { name: "Andy", age: 10, sex: "♂", description: "10歲，覺得上學壓力大，鍾意畫畫同做手工。", question: "點樣為Andy提供個人化服務？", options: [
+        { text: "介紹全健綜合大樓『和諧粉彩工作坊』", score: 10, feedback: "好掂！粉彩工作坊既迎合興趣又能有效減壓！", type: "grass" },
+        { text: "立刻排期會見專業臨床心理學家", score: 7.5, feedback: "有幫助，但初階可以先從興趣切入減低標籤效應。", type: "water" },
+        { text: "建議回家多閱讀心理勵志類繪本", score: 5, feedback: "有一定靜心效果，但缺乏社交與實體互動。", type: "electric" },
+        { text: "報名參加高強度兒童體能特訓班", score: 2.5, feedback: "不太合適，壓力大時強加高強度運動可能適得其反。", type: "fire" }
+      ] },
+      { name: "Mary", age: 30, sex: "♀", description: "30歲，職場壓力大，鍾意追求平靜靈性的活動。", question: "點樣為Mary有效運用地區資源？", options: [
+        { text: "體驗全健綜合大樓『全健師頌缽工作坊』", score: 10, feedback: "成功！頌缽聲音療癒能完美放鬆緊繃的神經。", type: "water" },
+        { text: "下載付費線上專業冥想與白噪音 App", score: 7.5, feedback: "實用，但實體工作坊的五感體驗與連結感更好。", type: "grass" },
+        { text: "引薦參加週末長途單車越野團", score: 5, feedback: "能轉換環境，但與她追求「靜下來」的初衷有別。", type: "electric" },
+        { text: "報名跨區隔週才辦一次的園藝講座", score: 2.5, feedback: "時間與距離阻力較大，容易降低持續參與意欲。", type: "fire" }
+      ] },
+      { name: "Joe", age: 8, sex: "♂", description: "8歲，唔鍾意傳統運動，但鍾意同朋友一齊玩遊戲。", question: "點樣提高Joe的健康動機？", options: [
+        { text: "推薦與朋友參加『互動體適能科技小組』", score: 10, feedback: "極好！結合科技遊戲與同伴，讓他不知不覺動起來！", type: "electric" },
+        { text: "安排一對一私人兒童體適能教練課", score: 7.5, feedback: "專業度高，但缺乏他最看重的「朋友互動」樂趣。", type: "water" },
+        { text: "給予運動教學 YouTube 影片在家自學", score: 5, feedback: "缺乏互動支持與安全指導，效果相當有限。", type: "grass" },
+        { text: "強制規定每天必須在公園跑步半小時", score: 2.5, feedback: "命令式逼迫會嚴重扼殺小朋友對運動的殘存興趣。", type: "fire" }
+      ] },
+      { name: "Kitty", age: 25, sex: "♀", description: "25歲，啱啱搬來香港，無咩朋友，熱愛音樂與歌唱。", question: "點樣為Kitty進行社會處方？", options: [
+        { text: "介紹去社區全健合唱團結識新朋友", score: 10, feedback: "卓越！音樂興趣是最好的破冰工具，助其融入社區。", type: "fire" },
+        { text: "報名廣東話日常對話密集實體班", score: 7.5, feedback: "實用，能解決適應問題，但社交黏著度沒興趣小組高。", type: "water" },
+        { text: "建議多去各大連鎖卡拉OK獨自練習", score: 5, feedback: "能滿足歌唱好惡，但對建立新社交圈毫無幫助。", type: "grass" },
+        { text: "介紹去青年中心參加中式烹飪基礎班", score: 2.5, feedback: "完全偏離了她熱愛的音樂興趣，參與動機低。", type: "electric" }
+      ] },
+      { name: "周伯伯", age: 75, sex: "♂", description: "75歲，行動唔方便，獨居常覺孤單，熱愛聽老歌。", question: "如何重燃周伯伯的生活動機？", options: [
+        { text: "安排全健義工定期上門與懷舊音樂探訪", score: 10, feedback: "很成功！親人般的關懷與熟悉的音樂能帶來極大慰藉。", type: "grass" },
+        { text: "贈送高難度數獨與益智棋類遊戲書", score: 7.5, feedback: "能鍛鍊腦力消磨時間，但無法解除核心的孤獨感。", type: "water" },
+        { text: "建議自行坐輪椅到街坊福利會看電視", score: 5, feedback: "行動阻力大，若無專人協助，實行難度非常高。", type: "electric" },
+        { text: "報名需要高度手部精細動作的手工藝班", score: 2.5, feedback: "未考量其生理行動不便，容易產生挫折感而放棄。", type: "fire" }
+      ] },
+      { name: "吳婆婆", age: 70, sex: "♀", description: "70歲，退休後覺得生活空虛，傾訴動機極強。", question: "全健經理該如何著手第一步？", options: [
+        { text: "進行全健經理一對一深度全人健康面談", score: 10, feedback: "極佳！深度傾聽能給予充分安全感並找出核心需求。", type: "water" },
+        { text: "推薦報名社區中心常青志願服務計畫", score: 7.5, feedback: "很有價值，能重尋自我尊嚴，但需先經面談評估心態。", type: "grass" },
+        { text: "贈送精美日記本鼓勵每日撰寫反思錄", score: 5, feedback: "文字可整理思緒，但對想找人傾談的婆婆來說太過沉悶。", type: "electric" },
+        { text: "勸導多參與早晨公園集體太極拳大會", score: 2.5, feedback: "若未建立社交安全感，直接丟入大集體容易使其退縮。", type: "fire" }
+      ] },
+      { name: "Jace", age: 28, sex: "♀", description: "28歲單親媽媽，經濟壓力大，平時熱愛下廚。", question: "如何善用在地網絡支援Jace？", options: [
+        { text: "連結全健大樓『Green Monday低碳煮食班』", score: 10, feedback: "到位！既省荷包、滿足下廚好惡，又能結識同道媽媽。", type: "grass" },
+        { text: "轉介預約專業理財策劃師做資產評估", score: 7.5, feedback: "理財建議具建設性，但無法直接舒緩其社交與心理壓力。", type: "water" },
+        { text: "引介參與跨區高級烘焙證照精進班", score: 5, feedback: "學費與時間成本過高，不符合其目前經濟緊繃的現況。", type: "electric" },
+        { text: "建議改訂外送健康餐盒以節省心力", score: 2.5, feedback: "外送開銷會加重經濟負擔，且抹煞了她烹飪的樂趣。", type: "fire" }
+      ] },
+      { name: "Tom", age: 15, sex: "♂", description: "15歲，內向缺乏自信，但渴望與人互動溝通。", question: "點樣提升Tom的青年參與意欲？", options: [
+        { text: "邀請加入『星途 The Starlight Explorer』青年發展企劃", score: 10, feedback: "太棒了！透過角色任務逐步與社區連結，有效建立自信！", type: "electric" },
+        { text: "推薦參與高強度線上電子競技對抗賽", score: 7.5, feedback: "雖有線上互動，但容易沉迷且缺乏現實面對面溝通。", type: "water" },
+        { text: "發放生涯規劃探索手冊供其回家研讀", score: 5, feedback: "靜態資料缺乏實體陪伴與引導，內向者通常流於形式。", type: "grass" },
+        { text: "指派在大型慶典舞台上擔任首席主持人", score: 2.5, feedback: "跨度過大、壓力過高，極易因過度焦慮引發挫敗感。", type: "fire" }
+      ] },
+      { name: "Cathy", age: 32, sex: "♀", description: "32歲慢性病患者，常情緒低落，自覺飲食極不健康。", question: "如何為其客製化健康方針？", options: [
+        { text: "安排全健註冊營養師進行飲食與生活行為導航", score: 10, feedback: "準確！由專業營養師循序漸進改善，符合其強烈意願。", type: "water" },
+        { text: "推介參加地區藝術與心靈正念療癒坊", score: 7.5, feedback: "對改善低落情緒有良效，但無法直接修正慢性病飲食。", type: "grass" },
+        { text: "直接報名半程馬拉松常規戶外訓練營", score: 5, feedback: "慢性病患未經評估切勿進行過激訓練，風險過高。", type: "electric" },
+        { text: "提供全套生酮飲食網路食譜自行嚴格執行", score: 2.5, feedback: "網路食譜缺乏個別化微調，嚴格限制可能加重焦慮情緒。", type: "fire" }
+      ] },
+      { name: "Sam", age: 60, sex: "♂", description: "60歲剛退休，因頓失工作社交圈而覺孤寂，鍾意戶外。", question: "點樣運用社區資源幫助Sam？", options: [
+        { text: "配對加入全健社區生態園藝與耕作小組", score: 10, feedback: "滿分！大自然環境加上共同勞作，能迅速建立革命情感。", type: "grass" },
+        { text: "介紹至街坊棋藝室參與室內象棋對弈", score: 7.5, feedback: "有社交成分，但對於熱愛戶外活動的他吸引力不足。", type: "water" },
+        { text: "建議學習操作最新跨國主流社群軟體", score: 5, feedback: "線上互動缺乏溫度，難以取代實體退休生活的空虛。", type: "electric" },
+        { text: "推薦待在家中收看各國精采旅遊全紀錄", score: 2.5, feedback: "越看越渴望外出的同時卻更顯孤單，社交孤立未被解決。", type: "fire" }
+      ] }
+    ];
+
+    let currentIdx = 0;
+    let totalScore = 0; // 下方玩家累積總得分
+    let isTyping = false;
+    let currentBgmStatus = false;
+    let envType = 'home';
+
+    const playerSex = ['♂', '♀'][Math.floor(Math.random() * 2)];
+    document.getElementById('lbl-player-sex').innerText = playerSex;
+
+    // 🎨 高畫質像素 SVG 動態繪製引擎 (包含豐富細節與即時表情包變化)
+    function generateHQPixelAvatar(name, age, sex, mood) {
+      let skin = "#ffcc99";
+      let skinShadow = "#e6a573";
+      let hair = age > 65 ? "#e0e0e0" : (sex === "♂" ? "#5a3d28" : "#804000");
+      let hairShadow = age > 65 ? "#b8b8b8" : (sex === "♂" ? "#3d2a1c" : "#592d00");
+      let shirt = sex === "♂" ? "#315bb0" : "#d12359";
+      
+      // 表情矩陣參數設定
+      let eyePath = "", mouthPath = "", blush = "", emoExtras = "";
+      
+      if (mood === null || mood === 7.5) { // 預設 / 微笑
+        eyePath = `<rect x="5" y="6" width="2" height="2" fill="#222"/><rect x="11" y="6" width="2" height="2" fill="#222"/>`;
+        mouthPath = `<path d="M6 10 L7 11 L11 11 L12 10" stroke="#000" stroke-width="1" fill="none"/>`;
+        if (mood === 7.5) blush = `<rect x="4" y="8" width="2" height="1" fill="#ff9999" opacity="0.6"/><rect x="12" y="8" width="2" height="1" fill="#ff9999" opacity="0.6"/>`;
+      } 
+      else if (mood === 10) { // 🌟 大正解：滿分狂喜 (眼睛瞇起、張嘴大笑、閃光特效)
+        eyePath = `<path d="M4 7 L6 5 L7 7" stroke="#222" stroke-width="1.5" fill="none"/><path d="M11 7 L12 5 L14 7" stroke="#222" stroke-width="1.5" fill="none"/>`;
+        mouthPath = `<path d="M6 9 Q8 13 12 9 Z" fill="#b32424" stroke="#000" stroke-width="1"/>`;
+        blush = `<rect x="4" y="8" width="2" height="1.5" fill="#ff4d4d" opacity="0.8"/><rect x="12" y="8" width="2" height="1.5" fill="#ff4d4d" opacity="0.8"/>`;
+        emoExtras = `
+          <polygon points="2,3 3,1 4,3 6,4 4,5 3,7 2,5 0,4" fill="#ffcc00"/>
+          <polygon points="14,3 15,1 16,3 18,4 16,5 15,7 14,5 12,4" fill="#ffcc00"/>
+        `;
+      } 
+      else if (mood === 5) { // 😐 扣分：平淡/無感 (眼睛變大呆滯、嘴巴成直線)
+        eyePath = `<rect x="5" y="6" width="2" height="2" fill="#444"/><rect x="11" y="6" width="2" height="2" fill="#444"/><rect x="6" y="6" width="1" height="1" fill="#fff"/><rect x="12" y="6" width="1" height="1" fill="#fff"/>`;
+        mouthPath = `<line x1="6.5" y1="10" x2="11.5" y2="10" stroke="#444" stroke-width="1.5"/>`;
+      } 
+      else if (mood === 2.5) { // 😓 扣大分：流汗、黑線、八字難過眉
+        eyePath = `<rect x="5" y="7" width="2" height="2" fill="#222"/><rect x="11" y="7" width="2" height="2" fill="#222"/>`;
+        mouthPath = `<path d="M7 11 Q9 9 11 11" stroke="#000" stroke-width="1.5" fill="none"/>`;
+        // 八字眉與黑線陰影
+        emoExtras = `
+          <line x1="4" y1="5" x2="7" y2="6" stroke="#000" stroke-width="1.5"/>
+          <line x1="14" y1="5" x2="11" y2="6" stroke="#000" stroke-width="1.5"/>
+          <rect x="2" y="5" width="2" height="3" fill="#3399ff"/>
+          <rect x="3" y="8" width="1" height="2" fill="#3399ff"/>
+          <rect x="4" y="3" width="10" height="1.5" fill="#1d2c5e" opacity="0.3"/>
+        `;
+      }
+
+      // 年紀專屬特徵
+      let ageDetails = "";
+      if(age > 65) {
+        // 皺紋線與老花眼鏡外框
+        ageDetails = `
+          <line x1="4" y1="9" x2="6" y2="9" stroke="${skinShadow}"/>
+          <line x1="12" y1="9" x2="14" y2="9" stroke="${skinShadow}"/>
+          <circle cx="6" cy="7" r="2.5" stroke="#444" stroke-width="1" fill="none"/>
+          <circle cx="12" cy="7" r="2.5" stroke="#444" stroke-width="1" fill="none"/>
+          <line x1="8.5" y1="6.5" x2="9.5" y2="6.5" stroke="#444"/>
+        `;
+      }
+
+      return `
+        <svg class="pixel-avatar-hd" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="9" cy="15.5" rx="6.5" ry="2" fill="rgba(0,0,0,0.15)"/>
+          <rect x="4" y="4" width="10" height="10" fill="${skin}"/>
+          <rect x="4" y="13" width="10" height="1" fill="${skinShadow}"/>
+          <rect x="3" y="2" width="12" height="3" fill="${hair}"/>
+          <rect x="3" y="5" width="2" height="4" fill="${hair}"/>
+          <rect x="13" y="5" width="2" height="4" fill="${hair}"/>
+          <rect x="3" y="2" width="12" height="1" fill="${hairShadow}"/>
+          <path d="M 3 14 L 15 14 L 16 18 L 2 18 Z" fill="${shirt}"/>
+          <rect x="8" y="14" width="2" height="1.5" fill="${skin}"/>
+          ${eyePath}
+          ${mouthPath}
+          ${blush}
+          ${ageDetails}
+          ${emoExtras}
+        </svg>
+      `;
+    }
+
+    // 經理背影渲染
+    function generatePlayerBack(sex) {
+      let hair = sex === '♂' ? '#222' : '#663300';
+      return `
+        <svg class="pixel-avatar-hd" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="9" cy="16" rx="6" ry="1.5" fill="rgba(0,0,0,0.2)"/>
+          <rect x="5" y="3" width="8" height="7" fill="${hair}"/>
+          <path d="M 3 10 L 15 10 L 16 18 L 2 18 Z" fill="#2e7d32"/>
+          <rect x="4" y="10" width="10" height="1" fill="#1b5e20"/>
+          <rect x="7" y="10" width="4" height="3" fill="#fff9e6"/>
+        </svg>
+      `;
+    }
+
+    document.getElementById('player-position').innerHTML = generatePlayerBack(playerSex);
+
+    function typeWriter(text, callback) {
+      isTyping = true;
+      document.getElementById('dialogue-text').innerHTML = '';
+      let i = 0;
+      function type() {
+        if (i < text.length) {
+          document.getElementById('dialogue-text').innerHTML += text.charAt(i);
+          i++;
+          setTimeout(type, 18);
+        } else {
+          isTyping = false;
+          if(callback) callback();
+        }
+      }
+      type();
+    }
+
+    // 更新下方玩家（累積得分大血條）
+    function updatePlayerHpBar(score) {
+      const bar = document.getElementById('player-hp');
+      bar.style.width = `${score}%`;
+      document.getElementById('lbl-player-hp-text').innerText = `${score} / 100`;
+
+      bar.className = 'hp-bar';
+      if (score <= 50) bar.classList.add('hp-red');
+      else if (score <= 80) bar.classList.add('hp-yellow');
+      else bar.classList.add('hp-green');
+    }
+
+    // 更新上方參加者（當前題目的單體健康度條，最高10分）
+    function updateEnemyHpBar(score) {
+      const bar = document.getElementById('enemy-hp');
+      let pct = (score / 10) * 100;
+      bar.style.width = `${pct}%`;
+      document.getElementById('lbl-enemy-hp-text').innerText = `${score} / 10`;
+
+      bar.className = 'hp-bar';
+      if (pct <= 30) bar.classList.add('hp-red');
+      else if (pct <= 75) bar.classList.add('hp-yellow');
+      else bar.classList.add('hp-green');
+    }
+
+    function initRound() {
+      if(currentIdx >= clients.length) {
+        endGame();
+        return;
+      }
+
+      const client = clients[currentIdx];
+      document.getElementById('quest-progress').innerText = `${currentIdx + 1}/10`;
+      document.getElementById('lbl-enemy-name').innerText = client.name;
+      document.getElementById('lbl-enemy-age').innerText = `Lv.${client.age} (${client.sex})`;
+      
+      // 預設載入平靜常態的高清像素頭像
+      document.getElementById('enemy-position').innerHTML = generateHQPixelAvatar(client.name, client.age, client.sex, null);
+      updateEnemyHpBar(0); 
+
+      typeWriter(`【場景事件】遇到了服務使用者【${client.name}】。${client.description} 經理該如何配對合適的社會處方？`, () => {
+        renderOptions(client.options);
+      });
+    }
+
+    function renderOptions(options) {
+      const box = document.getElementById('options-box');
+      box.innerHTML = '';
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'action-btn';
+        btn.innerText = opt.text;
+        btn.onclick = () => { if(!isTyping) handleAnswer(opt); };
+        box.appendChild(btn);
+      });
+    }
+
+    function handleAnswer(option) {
+      const client = clients[currentIdx];
+      totalScore += option.score;
+      if(totalScore > 100) totalScore = 100;
+
+      // 核心邏輯：根據得分即時切換高清像素頭像的「表情變化」
+      document.getElementById('enemy-position').innerHTML = generateHQPixelAvatar(client.name, client.age, client.sex, option.score);
+      
+      // 動態特效分級：
+      const enemyContainer = document.getElementById('enemy-position');
+      if(option.score === 10) {
+        // 滿分狂喜：觸發跳躍動畫 (Jump)
+        enemyContainer.classList.add('animate-jump');
+        setTimeout(() => enemyContainer.classList.remove('animate-jump'), 1200);
+      } else {
+        // 其餘遞減分數：觸發冇咁高興的受傷/震動動畫 (Shake)
+        enemyContainer.classList.add('animate-shake');
+        setTimeout(() => enemyContainer.classList.remove('animate-shake'), 400);
+      }
+
+      // 更新雙方血條狀態
+      updateEnemyHpBar(option.score);
+      updatePlayerHpBar(totalScore);
+
+      // 爆發粒子特效
+      spawnParticles(option.type || 'grass');
+
+      document.getElementById('options-box').innerHTML = '';
+      typeWriter(`【處方效果】${option.feedback} （健康值 +${option.score}，全健累積總分已達 ${totalScore} 分！）`, () => {
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'action-btn full-width-next';
+        nextBtn.innerText = currentIdx === clients.length - 1 ? '完成10日特訓・查看結算報告 🏁' : '引入下一位服務使用者 ▶';
+        nextBtn.onclick = () => { currentIdx++; initRound(); };
+        document.getElementById('options-box').appendChild(nextBtn);
+      });
+    }
+
+    function spawnParticles(type) {
+      let color = '#51da46';
+      if(type === 'fire') color = '#ff4500';
+      if(type === 'water') color = '#1e90ff';
+      if(type === 'electric') color = '#ffd700';
+
+      for(let i=0; i<18; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.backgroundColor = color;
+        p.style.left = '130px';
+        p.style.bottom = '90px';
+        p.style.setProperty('--mx', (Math.random() - 0.2) * 260 + 'px');
+        p.style.setProperty('--my', (Math.random() - 0.8) * 190 + 'px');
+        document.getElementById('particle-container').appendChild(p);
+        setTimeout(() => p.remove(), 700);
+      }
+    }
+
+    function toggleEnvironment() {
+      const stage = document.getElementById('battle-stage');
+      if(envType === 'home') {
+        stage.style.setProperty('--pixel-bg', "linear-gradient(to bottom, #111e38, #3b5998), url('https://img.itch.zone/aW1nLzExNDY4Mzc3LnBuZw==/original/6v7F3n.png')");
+        envType = 'nature';
+      } else {
+        stage.style.setProperty('--pixel-bg', "linear-gradient(to bottom, #87CEEB, #E0F6FF), url('https://img.itch.zone/aW1nLzU3MTY0MDAucG5n/original/x21p04.png')");
+        envType = 'home';
+      }
+    }
+
+    function toggleAudio() {
+      const audio = document.getElementById('bgm');
+      currentBgmStatus = !currentBgmStatus;
+      if(currentBgmStatus) {
+        audio.play().catch(() => {});
+        document.getElementById('btn-audio').innerText = "🎵 背景音樂: 播放中";
+      } else {
+        audio.pause();
+        document.getElementById('btn-audio').innerText = "🎵 背景音樂: 關閉";
+      }
+    }
+
+    function endGame() {
+      document.getElementById('battle-stage').style.display = 'none';
+      document.getElementById('control-section').style.display = 'none';
+      document.getElementById('summary-screen').style.display = 'block';
+
+      let msg = '';
+      if(totalScore <= 50) msg = `最終累積全健指數：${totalScore}分。你對各階層街坊的個別化痛點抓得不夠精準，配對處方略顯吃力。多回顧全健綜合大樓的核心指南，繼續加油！💪🏻`;
+      else if(totalScore <= 80) msg = `最終累積全健指數：${totalScore}分。表現出眾！你已經能妥善調配地區網絡資源，並給予大眾合適的介入手段，是位非常優秀的全健經理！👀`;
+      else msg = `最終累積全健指數：${totalScore}分！滿分傳奇！你對社會處方的宏觀架構與個人微觀偏好瞭如指掌，成功激發全社區的健康動機，完美掌舵大樓！👏🏻`;
+      
+      document.getElementById('summary-text').innerText = msg;
+    }
+
+    function resetGame() {
+      currentIdx = 0; totalScore = 0;
+      document.getElementById('battle-stage').style.display = 'block';
+      document.getElementById('control-section').style.display = 'grid';
+      document.getElementById('summary-screen').style.display = 'none';
+      updatePlayerHpBar(0);
+      initRound();
+    }
+
+    window.onload = () => {
+      updatePlayerHpBar(0);
+      initRound();
+    };
+  </script>
+</body>
+</html>
